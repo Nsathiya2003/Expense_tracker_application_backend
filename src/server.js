@@ -1,16 +1,19 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import { userRouter } from './routes/user-router.js';
+import { ConnectDB } from './config/db.js';
 
 dotenv.config();
+ConnectDB();
 
 const app = express();
 
-app.use((req,res)=>{
-    console.log(req);
-});
+app.use(express.json()); //recive body data
 
-// app.use('/user');
+app.use('/api/user',userRouter);
 
+
+ 
 //create a server 
 const port = process.env.PORT || 5000;
 app.listen(port,()=>{
