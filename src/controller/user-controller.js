@@ -4,10 +4,8 @@ import User from '../models/user-model.js';
 import mongoose, { Types } from 'mongoose';
 
 export const createUser = async (req,res) => {
-        console.log("req.body----",req.body)
 
     const { username, mobileNumber, emailId, password} = req.body;
-    console.log("req.body----",req.body)
 
     try{
         const existing = await User.findOne({ where : { emailId: emailId}});
@@ -112,7 +110,7 @@ export const updateUser = async (req,res) => {
     catch(err){
         return res.status(500).json({
             status:false,
-            message:`Error occuring update user${err.message}`,
+            message:`Error occur update user${err.message}`,
             data:[]
         })
     }
@@ -121,7 +119,7 @@ export const updateUser = async (req,res) => {
 export const userLogin = async (req,res) => {
     const { emailId, password } = req.body;
     try{
-      const findUser = await User.findOne({ where : { emailId: emailId}});
+      const findUser = await User.findOne({emailId});
         if(!findUser){
             return res.status(400).json({
                 status:true,
@@ -131,9 +129,9 @@ export const userLogin = async (req,res) => {
         }
       
         //password hash...
-        const hashedPassword = bcrypt.hash(password,10);
-
-        if(findUser.password!=hashedPassword){
+        const hashedPassword = await bcrypt.compare(password,findUser.password);
+        
+        if(!hashedPassword){
             return res.status(400).json({
                 status:true,
                 message:'Password is wrong please enter correct password',
@@ -141,25 +139,21 @@ export const userLogin = async (req,res) => {
             });
         }
         //generate access-token 
-        const token = await generateAccessToken(
-          {
-                id: findUser.id,
-                emailId: findUser.emailId
-            }
-        )
+        const token = await generateAccessToken(findUser);
+
         return res.status(201).json({
             status:true,
             message:'user logged in successfully',
             data:{
                 data: findUser,
-                access_token: token.access_token
+                access_token: token
             }
         })
     }
     catch(err){
         return res.status(500).json({
             status:true,
-            message:`Error occuring login${err.message}`,
+            message:`Error occur login${err.message}`,
             data:[]
         })
     }

@@ -8,7 +8,7 @@ ConnectDB();
 
 const app = express();
 
-app.use(express.json()); //recive body data
+app.use(express.json()); //receive body data
 
 app.use('/api/user',userRouter);
 
