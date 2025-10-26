@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { generateAccessToken } from '../helpers/authentication.js';
 import User from '../models/user-model.js';
-import mongoose, { Types } from 'mongoose';
+import mongoose from 'mongoose';
 
 export const createUser = async (req,res) => {
 
@@ -130,7 +130,7 @@ export const userLogin = async (req,res) => {
       
         //password hash...
         const hashedPassword = await bcrypt.compare(password,findUser.password);
-        
+
         if(!hashedPassword){
             return res.status(400).json({
                 status:true,
