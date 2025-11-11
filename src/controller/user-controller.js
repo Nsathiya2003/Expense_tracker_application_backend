@@ -5,10 +5,10 @@ import mongoose from 'mongoose';
 
 export const createUser = async (req,res) => {
 
-    const { username, mobileNumber, emailId, password} = req.body;
+    const { username, lastName, mobileNumber, emailId, password} = req.body;
 
     try{
-        const existing = await User.findOne({ where : { emailId: emailId}});
+        const existing = await User.findOne({ emailId : emailId});
         if(existing){
             return res.status(400).json({
                 status:true,
@@ -22,6 +22,7 @@ export const createUser = async (req,res) => {
 
         const data = await User.create({
             username: username,
+            lastName: lastName,
             mobileNumber:mobileNumber,
             emailId:emailId,
             password:hashedPassword
@@ -95,6 +96,7 @@ export const updateUser = async (req,res) => {
             })
         }
         existing.username = username,
+        existing.lastName = lastName,
         existing.mobileNumber = mobileNumber,
         existing.emailId = emailId,
         existing.updatedBy = objectId

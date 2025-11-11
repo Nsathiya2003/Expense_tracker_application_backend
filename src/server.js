@@ -1,23 +1,37 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import { userRouter } from './routes/user-router.js';
-import { ConnectDB } from './config/db.js';
-import { incomeRouter } from './routes/income-router.js';
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import { ConnectDB } from "./config/db.js";
+import { userRouter } from "./routes/user-router.js";
+import { incomeRouter } from "./routes/income-router.js";
 
 dotenv.config();
 ConnectDB();
 
 const app = express();
 
-app.use(express.json()); //receive body data
+//  CORS setup
+const FRONTEND_URL = process.env.FRONT_END_URL || "http://localhost:5173";
 
-app.use('/api/user',userRouter);
-app.use('/api/income',incomeRouter)
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
+app.use(express.json());
 
- 
-//create a server 
-const port = process.env.PORT || 5000;
-app.listen(port,()=>{
-    console.log(`Server is running on http://localhost:${port}`);
+app.use("/api/user", userRouter);
+app.use("/api/income", incomeRouter);
+
+app.get("/", (req, res) => {
+  res.json({ message: "Backend running" });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Allowed origin: ${FRONTEND_URL}`);
 });

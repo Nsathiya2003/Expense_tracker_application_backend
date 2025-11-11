@@ -5,7 +5,7 @@ export const userRouter = express.Router();
 
 userRouter.post('/create',createUser)
 
-userRouter.get('/get/:id',findUser)
+userRouter.get('/get/:id',findUser) 
 
 userRouter.put('/update/:id',updateUser)
 
