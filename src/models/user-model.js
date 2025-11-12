@@ -21,7 +21,15 @@ const UserSchema = new mongoose.Schema({
     password:{
         type:String,
         required:[true,'password is required']
-    }
+    },
+    otp: {
+        type:Number,
+        default:5,
+        required:[false]
+    },
+     expiryMinutes: { type: Number, default: 5 }, 
+       expiresAt: { type: Date, required: true },
+
 })
 
     UserSchema.add(baseSchema);

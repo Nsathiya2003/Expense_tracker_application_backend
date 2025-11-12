@@ -2,6 +2,11 @@ import bcrypt from 'bcrypt';
 import { generateAccessToken } from '../helpers/authentication.js';
 import User from '../models/user-model.js';
 import mongoose from 'mongoose';
+import generateOtp from '../utils/generateOtp.js';
+import { sendOtpEmail } from '../services/emailService.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export const createUser = async (req,res) => {
 
@@ -29,7 +34,7 @@ export const createUser = async (req,res) => {
         });
          return res.status(200).json({
             status: true,
-            message:'user created successfully',
+            message:'Account registered successfully',
             data: data
         })
     }
@@ -125,7 +130,7 @@ export const userLogin = async (req,res) => {
         if(!findUser){
             return res.status(400).json({
                 status:true,
-                message:'EmailId is wrong please enter correct emailId',
+                message:'EmailId is invalid please enter registered emailId',
                 data:[]
             });
         }
@@ -136,7 +141,7 @@ export const userLogin = async (req,res) => {
         if(!hashedPassword){
             return res.status(400).json({
                 status:true,
-                message:'Password is wrong please enter correct password',
+                message:'Password is mismatched',
                 data:[]
             });
         }
@@ -164,4 +169,76 @@ export const userLogin = async (req,res) => {
 
 
 
+}
+
+export const forgotOtp = async (req,res) => {
+    const { emailId } = req.body;
+    const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "5", 10);
+
+    try{
+        //generate otp...
+        const otp = generateOtp();
+        console.log('otp is---',otp);
+        const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+        //send otp to email
+        await sendOtpEmail(otp,emailId)
+
+        //store the otp,minutes and date...
+        const findData = await User.findOne({emailId : emailId});
+        findData.otp = otp,
+        findData.expiresAt = expiresAt,
+        findData.expiryMinutes = OTP_EXPIRY_MINUTES
+
+        await findData.save();
+
+        return res.status(201).json({
+            status:true,
+            message:'otp was successfully send',
+            data:findData
+        })
+    }
+    catch(error){
+        return res.status(500).json({
+            status:false,
+            message:`Error sending otp...${error.message}`,
+            data:null
+        })
+    }
+}
+
+export const resetPassword = async(req,res) => {
+    const {emailId, otp, password} = req.body;
+    console.log('req.body----',req.body)
+    try{
+        const findEmail = await User.findOne({emailId: emailId});
+        //check otp is valid...
+        if (Date.now() > findEmail.expiresAt) {
+            return res.status(501).json({ message:'OTP expired'})
+        }
+
+        console.log('email---',findEmail.otp === +otp)
+
+        if (findEmail.otp!== +otp) {
+            return res.status(400).json({ message:'OTP invalid'})
+        }
+
+         //password hashing
+        const hashedPassword = await bcrypt.hash(password,10);
+        console.log('hashedPassword----',hashedPassword)
+
+        findEmail.password = hashedPassword;
+
+        await findEmail.save();
+
+        return res.status(201).json({
+            status:true,
+            message:'password reset successfully',
+            data:findEmail,
+        })
+    }
+    catch(error){
+            return res.status(500).json({ message:'OTP expired'})
+
+    }
 }
