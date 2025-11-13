@@ -4,7 +4,7 @@ import { isAuthenticated } from '../middleware/authorization-middleware.js';
 
 export const incomeRouter = express.Router();
 
-incomeRouter.post('/create',isAuthenticated, createIncome)
+incomeRouter.post('/create',isAuthenticated, createIncome) 
 
 incomeRouter.get('/find',isAuthenticated,findAll)
 

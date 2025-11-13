@@ -77,7 +77,9 @@ export const findUser = async (req,res) => {
 
 export const updateUser = async (req,res) => {
     const {id} = req.params;
-    const { username, mobileNumber , emailId} = req.body;
+    const {user_profile} = req.file;
+    console.log('user-profile---',user_profile)
+    const { username, mobileNumber , emailId, age, gender,address} = req.body;
     const objectId = new mongoose.Types.ObjectId(String(id));
 
     try{    
@@ -104,7 +106,10 @@ export const updateUser = async (req,res) => {
         existing.lastName = lastName,
         existing.mobileNumber = mobileNumber,
         existing.emailId = emailId,
-        existing.updatedBy = objectId
+        existing.updatedBy = objectId,
+        existing.address = address,
+        existing.age = age,
+        existing.gender = gender        
         // existing.password = password
         await existing.save();
 

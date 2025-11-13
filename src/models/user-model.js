@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { baseSchema } from "./base-model.js";
+import { type } from "os";
 
 const UserSchema = new mongoose.Schema({
     username: {
@@ -27,8 +28,34 @@ const UserSchema = new mongoose.Schema({
         default:5,
         required:[false]
     },
-     expiryMinutes: { type: Number, default: 5 }, 
-       expiresAt: { type: Date, required: true },
+    expiryMinutes: { 
+        type: Number, 
+        default: 5
+     }, 
+    expiresAt: { 
+        type: Date, 
+        required: true 
+    },
+    file_name:{
+        type:String,
+        required:false
+    },
+    file_path:{
+        type:String,
+        required:false
+    },
+    age: {
+         type:Number,
+        required:false
+    },
+    gender:{
+        type:String,
+        required:false
+    },
+    address:{
+        type:String,
+        required:false
+    }
 
 })
 
