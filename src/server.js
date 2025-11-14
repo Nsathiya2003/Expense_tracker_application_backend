@@ -4,6 +4,7 @@ import cors from "cors";
 import { ConnectDB } from "./config/db.js";
 import { userRouter } from "./routes/user-router.js";
 import { incomeRouter } from "./routes/income-router.js";
+import * as path from "path";
 
 dotenv.config();
 ConnectDB();
@@ -29,6 +30,8 @@ app.use("/api/income", incomeRouter);
 app.get("/", (req, res) => {
   res.json({ message: "Backend running" });
 });
+
+app.use(express.static(path.join(process.cwd(),"uploads",'users')))
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -34,7 +34,7 @@ const UserSchema = new mongoose.Schema({
      }, 
     expiresAt: { 
         type: Date, 
-        required: true 
+        required: false 
     },
     file_name:{
         type:String,

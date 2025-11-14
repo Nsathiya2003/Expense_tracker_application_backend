@@ -49,9 +49,8 @@ export const createUser = async (req,res) => {
 
 export const findUser = async (req,res) => {
     const { id} = req.params;
-    const objectId = new mongoose.Types.ObjectId(String(id));
     try{
-        const data = await User.findById(objectId);
+        const data = await User.findById(id);
 
         if(!data){
           return res.status(404).json({
@@ -60,7 +59,7 @@ export const findUser = async (req,res) => {
             data:[]
         });
         }
-         return res.status(404).json({
+         return res.status(201).json({
             status:true,
             message:'user fetched successfully',
             data:data
@@ -77,13 +76,13 @@ export const findUser = async (req,res) => {
 
 export const updateUser = async (req,res) => {
     const {id} = req.params;
-    const {user_profile} = req.file;
-    console.log('user-profile---',user_profile)
-    const { username, mobileNumber , emailId, age, gender,address} = req.body;
+    const user_profile = req.file;
+    const { username, mobileNumber , emailId, age, gender,address,lastName} = req.body;
     const objectId = new mongoose.Types.ObjectId(String(id));
+    const publicPath = `/uploads/users/${req?.file?.filename}`;
 
     try{    
-        const existing = await User.findById(objectId);
+        const existing = await User.findById(id);
         if(!existing){
           return res.status(404).json({
             status:true,
@@ -109,7 +108,9 @@ export const updateUser = async (req,res) => {
         existing.updatedBy = objectId,
         existing.address = address,
         existing.age = age,
-        existing.gender = gender        
+        existing.gender = gender,
+        existing.file_name = req?.file?.filename,
+        existing.file_path = publicPath
         // existing.password = password
         await existing.save();
 
