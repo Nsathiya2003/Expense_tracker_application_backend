@@ -24,14 +24,20 @@ app.use(
 
 app.use(express.json());
 
+app.use(
+  "/uploads/users",
+  express.static(path.join(process.cwd(), "uploads", "users"))
+);
+
+
 app.use("/api/user", userRouter);
 app.use("/api/income", incomeRouter);
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend running" });
 });
-
-app.use(express.static(path.join(process.cwd(),"uploads",'users')))
+const pathIs = path.join(process.cwd(),"uploads","users");
+console.log('pathIds----',pathIs)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
