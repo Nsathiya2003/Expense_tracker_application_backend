@@ -2,13 +2,9 @@ import mongoose, { Schema } from "mongoose";
 import { baseSchema } from "./base-model.js";
 
 const IncomeSchema = new Schema({
-    category:{
+    income_category:{
         type:String,
         required:[true,'income is required']
-    },
-    other_category:{
-        type:String,
-        required:[false]
     },
     income_date:{
         type:Date,
@@ -24,6 +20,18 @@ const IncomeSchema = new Schema({
     },
     payment_receive_mode:{
         type:String,
+        required:[false]
+    },
+    saving_contribution:{
+        type:Boolean,
+        required:[false]
+    },
+    goal_id:{
+        type:String,
+        required:[false]
+    },
+    goal_contribute_amount:{
+        type:Number,
         required:[false]
     }
 })

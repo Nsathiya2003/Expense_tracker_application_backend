@@ -3,18 +3,20 @@ import Income from "../models/income -model.js";
 import User from "../models/user-model.js";
 
 export const createIncome = async(req,res) => {
-    const { category, other_category,income_amount,notes,payment_receive_mode } = req.body;
+    const { income_category,income_amount,income_date,notes,payment_receive_mode,saving_contribution,goal_id,goal_contribute_amount} = req.body;
     const date = new Date();
     const user_id = req.user.id;
 
     try{
         const data = await Income.create({
-            category:category,
-            other_category:other_category,
+            income_category:income_category,
             income_amount:income_amount,
             notes:notes,
             payment_receive_mode:payment_receive_mode,
-            income_date:date,
+            income_date:income_date,
+            saving_contribution:saving_contribution,
+            goal_id:goal_id,
+            goal_contribute_amount:goal_contribute_amount,
             createdBy: user_id,
             updatedBy:null,
             updatedAt:null
