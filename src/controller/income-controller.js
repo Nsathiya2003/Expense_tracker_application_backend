@@ -37,9 +37,10 @@ export const createIncome = async(req,res) => {
 }
 
 export const findAll = async (req,res) => {
-    const userId = req.user._id;
+    const userId = req.user.id;
+    console.log('userID is---',userId)
     try{
-        const data = await Income.find({createdBy:userId,isDeleted:false});
+        const data = await Income.find({createdBy:userId,isDeleted:false}).populate(['createdBy','goal_id'])
         return res.status(201).json({
             status:true,
             message:'income fetched successfully',
@@ -129,4 +130,9 @@ export const deleteIncome = async (req,res) => {
     });
 
 
+}
+
+export const filterIncome = async (req,res) => {
+    const { page, limit, sort, order, income_category,minAmount, maxAmount,income_date,startDate,endDate,} = req.body;
+    
 }
