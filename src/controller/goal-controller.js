@@ -13,7 +13,8 @@ export const createGoal = async (req,res) => {
             deadline_date:deadline_date,
             notes:notes,
             createdBy: user_id,
-            updatedBy:null,           
+            updatedBy:null,    
+            status:'PENDING'       
         })
 
         return res.status(200).json({
@@ -128,7 +129,7 @@ export const deleteGoal = async (req,res) => {
 }
 
 export const filterGoal = async (req,res) => {
-    const { page, limit, search, fromDate, toDate, deadline_date} = req.body;
+    const { page, limit, search, fromDate, toDate, deadline_date,status} = req.body;
     const user_id = req?.user?.id;
 
     console.log('req.body is----',req?.body)
@@ -141,17 +142,29 @@ export const filterGoal = async (req,res) => {
 
     //2.search
     if(search){
-        query.goal_name = { $regex: search, $options: "i"},
-        query.target_amount = { $regex: search, $options:"i"},
-        query.notes = { $regex: search, $options:"i"}
+        query.$or =[
+            {goal_name : { $regex: search, $options: "i"} },
+            {target_amount : { $regex: search, $options: "i"} },
+            {notes : { $regex: search, $options: "i"} },
+        ]
+
     }
 
     //3.filter
     if(fromDate && toDate){
         query.createdAt = {
-            $gte: new Date(fromDate),
-            $lte: new Date(toDate)
+            $gte: fromDate,
+            $lte: toDate
         }
+    }
+
+    //deadline_date 
+    if(deadline_date){
+        query.deadline_date = deadline_date
+    }
+    //status
+    if(status){
+        query.status = status
     }
 
     //3.total count 

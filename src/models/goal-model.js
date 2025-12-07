@@ -11,6 +11,10 @@ export const GoalSchema = new Schema({
         type: String,
         required: [true]
     },
+    allocated_amount: {
+        type: Number, 
+        default: 0
+    },
     deadline_date: {
         type: Date,
         required: [true]
@@ -18,6 +22,11 @@ export const GoalSchema = new Schema({
     notes:{
         type: String
     },
+    status:{
+        type:String,
+        default:'PENDING',
+        required: [true]
+    }
 
 },
 )
