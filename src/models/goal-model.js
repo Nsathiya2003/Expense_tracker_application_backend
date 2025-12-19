@@ -2,7 +2,6 @@ import mongoose, { Schema } from "mongoose";
 import { baseSchema } from "./base-model.js";
 
 export const GoalSchema = new Schema({
-
     goal_name:{
         type: String,
         required: [true]

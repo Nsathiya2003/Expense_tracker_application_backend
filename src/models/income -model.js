@@ -27,7 +27,8 @@ const IncomeSchema = new Schema({
         required:[false]
     },
     goal_id:{
-        type:String,
+        type: mongoose.Schema.ObjectId,
+        ref:'Goal',
         required:[false]
     },
     goal_contribute_amount:{
