@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import Income from "../models/income -model.js";
-import User from "../models/user-model.js";
+import { GoalHistory } from "../models/goal-history-model.js";
+import { Goal } from "../models/goal-model.js";
 
 export const createIncome = async(req,res) => {
     const { income_category,income_amount,income_date,notes,payment_receive_mode,saving_contribution,goal_id,goal_contribute_amount} = req.body;
@@ -8,9 +8,20 @@ export const createIncome = async(req,res) => {
     const user_id = req.user.id;
 
     try{
+
+        if(goal_contribute_amount > income_amount){
+            return res.status(404).json({
+                status:false,
+                message:'Your goal spend amount is greater than income amount',
+                data: null
+            })
+        }
+
+        let after_saving_amount = income_amount - goal_contribute_amount;
+        
         const data = await Income.create({
             income_category:income_category,
-            income_amount:income_amount,
+            income_amount:after_saving_amount,
             notes:notes,
             payment_receive_mode:payment_receive_mode,
             income_date:income_date,
@@ -21,6 +32,24 @@ export const createIncome = async(req,res) => {
             updatedBy:null,
             updatedAt:null
         });
+
+        //create a goal history...
+         let saved = await GoalHistory.create({
+            goal_id: goal_id,
+            income_type: income_category,
+            allocated_amount:goal_contribute_amount,
+            createdBy: user_id,
+            updatedBy:null,
+        });
+        console.log('saved-----',saved)
+
+        //set the goal amount...
+        let findGoal = await Goal.findById(goal_id);
+        console.log('findGoal is---',findGoal)
+
+        findGoal.allocated_amount = findGoal?.allocated_amount + goal_contribute_amount;
+        await findGoal.save()
+
         return res.status(201).json({
             status:true,
             message:'income data created successfully',
@@ -84,7 +113,7 @@ export const findOne = async (req,res) => {
 
 export const updateIncome = async (req,res) => {
     const { id } = req.params;
-    const {category, other_category,income_amount,notes,payment_receive_mode} = req.body;
+    const {category, other_category,income_amount,notes,payment_receive_mode,saving_contribution,goal_contribute_amount} = req.body;
     const user_id = req.user.id;
 
     const date = new Date();
@@ -98,11 +127,13 @@ export const updateIncome = async (req,res) => {
         findIncome.notes = notes,
         findIncome.payment_receive_mode = payment_receive_mode,
         findIncome.income_date = date,
+        findIncome.saving_contribution = saving_contribution,
+        findIncome.goal_contribute_amount = goal_contribute_amount,
         findIncome.updatedBy = user_id
 
         await findIncome.save();
 
-        return res.status(401).json({
+        return res.status(201).json({
             status:true,
             message:'income updated successfully',
             data:findIncome
@@ -133,6 +164,61 @@ export const deleteIncome = async (req,res) => {
 }
 
 export const filterIncome = async (req,res) => {
-    const { page, limit, sort, order, income_category,minAmount, maxAmount,income_date,startDate,endDate,} = req.body;
-    
+    const { page, limit, search, fromDate, toDate, income_date,goal_id} = req.body;
+    const user_id = req?.user?.id;    
+
+    //1.set needed condition based...
+    let query = {
+        createdBy: user_id
+    } 
+
+    //2.search
+    if(search){
+        query.$or =[
+            {income_category : { $regex: search, $options: "i"} },
+        ]
+    }
+
+    //3.filter
+    if(fromDate && toDate){
+        query.createdAt = {
+            $gte: fromDate,
+            $lte: toDate
+        }
+    }
+
+    //deadline_date 
+    if(income_date){
+        query.income_date = income_date
+    }
+    if(goal_id){
+        query.goal_id = goal_id
+    }
+
+    //3.total count 
+    const total_count = await Income.countDocuments(query);
+
+    //4. calculate paginated data...
+    const data = await Income.find(query)
+    .populate(["createdBy","goal_id"])
+    .sort({ createdAt: -1})
+    .skip((page-1)* limit)
+    .limit(limit)
+
+    //5.return response 
+    return res.status(201).json({
+        status: true,
+        message:'Income data fetched successfully',
+        data: data,
+        pagination: {
+            page: page,
+            limit:limit,
+            totalRecords:total_count,
+            totalPages: Math.ceil(total_count/limit),
+            hasNextPage:page <Math.ceil(total_count/limit),
+            hasPrevPage:page>1
+        }
+    })
+
+
 }
