@@ -1,3 +1,4 @@
+import { GoalHistory } from "../models/goal-history-model.js";
 import { Goal } from "../models/goal-model.js";
 
 export const createGoal = async (req,res) => {
@@ -14,8 +15,16 @@ export const createGoal = async (req,res) => {
             notes:notes,
             createdBy: user_id,
             updatedBy:null,    
-            status:'PENDING'       
+            status:'PENDING',
+            allocated_amount:0    
         })
+
+        //maintain goal history...
+        // const history = await GoalHistory.create({
+        //     goal_id: createGoal._id,
+        //     income_type: 'initial',
+        //     allocated_amount:0
+        // })
 
         return res.status(200).json({
             success:true,
@@ -35,7 +44,7 @@ export const createGoal = async (req,res) => {
 export const findAllGoal = async (req,res) => {
     const user_id = req?.user?.id;
     try{
-        const find = await Goal.find({createdBy:user_id,isDeleted:false}).populate(['createdBy']);
+        const find = await Goal.find({createdBy:user_id}).populate(['createdBy']);
 
         return res.status(200).json({
             status: true,
@@ -112,7 +121,6 @@ export const deleteGoal = async (req,res) => {
 
     try{
         const findData = await Goal.findByIdAndDelete(id);
-        console.log('findData is ----',findData)
         return res.status(201).json({
             status:true,
             message:'your goal was deleted'
@@ -193,4 +201,34 @@ export const filterGoal = async (req,res) => {
     })
 
 
+}
+
+export const viewGoalHistory = async (req,res) => {
+    const { page, limit } = req.body;
+    const user_id = req.user?.id;
+
+    let query = {
+        createdBy : user_id
+    }
+    
+    const total_count = await GoalHistory.countDocuments(query);
+
+    const data = await GoalHistory.find(query).populate(["createdBy","goal_id"])
+    .sort({ createdAt: -1})
+    .skip((page-1)* limit)
+    .limit(limit)
+
+    return res.status(201).json({
+        status: true,
+        message:'All histories fetched successfully',
+        data:data,
+        pagination:{
+            page: page,
+            limit: limit,
+            totalRecords: total_count,
+            totalPages: Math.ceil(total_count/limit),
+            hasNextPage:page<Math.ceil(total_count/limit),
+            hasPrevPage:page>1
+        }
+    })
 }
