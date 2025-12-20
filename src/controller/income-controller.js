@@ -378,3 +378,34 @@ export const filterIncome = async (req, res) => {
   }
 };
 
+export const incomeBalance = async (req,res) => {
+    const { user_id } = req.user.id;
+    console.log('ueser id---',user_id); 
+
+    const findIncome = await Income.aggregate([
+      { $match: { createdBy:user_id } },
+      { $group: {
+          _id: null,
+          totalIncome: { $sum: "$income_amount" }
+        }
+      }
+    ]);
+
+    console.log('findIncome---',findIncome);
+
+    try{
+      return res.status(200).json({
+      status: true,
+      message: "Income balance fetched successfully",
+      data: findIncome
+    });
+    }
+    catch(error){
+      return res.status(500).json({
+      status: false,
+      message: "Internal server error",
+      error: error.message
+    });
+    }
+}
+
