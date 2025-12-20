@@ -34,6 +34,10 @@ const IncomeSchema = new Schema({
     goal_contribute_amount:{
         type:Number,
         required:[false]
+    },
+    status:{
+        type:String,
+        default:'active'
     }
 })
 

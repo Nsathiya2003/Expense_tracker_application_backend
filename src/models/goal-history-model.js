@@ -14,6 +14,11 @@ export const GoalHistorySchema = new Schema({
     income_type:{
         type:String,
         required:[false]
+    },
+    income_id:{
+        type:mongoose.Schema.ObjectId,
+        ref:'Income',
+        default:null
     }
 },
 )
