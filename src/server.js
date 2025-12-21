@@ -7,6 +7,7 @@ import { incomeRouter } from "./routes/income-router.js";
 import * as path from "path";
 import { goalRouter } from "./routes/goal-router.js";
 import { expenseRouter } from "./routes/expense-router.js";
+import budgetRouter from "./routes/budget-router.js";
 
 dotenv.config();
 ConnectDB();
@@ -35,7 +36,8 @@ app.use(
 app.use("/api/user", userRouter);
 app.use("/api/income", incomeRouter);
 app.use("/api/goal",goalRouter);
-app.use("/api/expense",expenseRouter)
+app.use("/api/expense",expenseRouter);
+app.use("/api/budget",budgetRouter)
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend running" });
