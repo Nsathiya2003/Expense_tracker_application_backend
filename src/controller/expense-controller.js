@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Expense } from "../models/expense-model.js";
+import { BalanceModel } from "../models/balance-model.js";
 
 export const createExpense = async( req,res) => {
 
@@ -18,6 +19,16 @@ export const createExpense = async( req,res) => {
             tags: tags,
             createdBy: user_id
         });
+
+
+        //reduce that amount from income amount
+        let findBalance = await BalanceModel.findOne({createdBy:user_id});
+        console.log('findBalance---',findBalance);
+        if(findBalance){
+            findBalance.totalExpense += Number(expense_amount);
+            findBalance.balanceAmount = findBalance.totalIncome - findBalance.totalExpense;
+            await findBalance.save();
+        }
 
         return res.status(201).json({
             status: true,
@@ -90,52 +101,101 @@ export const getExpenseById = async (req,res) => {
     }
 }
 
-export const updateExpense = async (req,res) => {
+export const updateExpense = async (req, res) => {
+  try {
     const user_id = req.user.id;
-    const {id} = req.params;
-    const { expense_category, expense_amount, budget_category, expense_date, is_recurring,notes,payment_mode,tags } = req.body;
+    const { id } = req.params;
+    const {
+      expense_category,
+      expense_amount,
+      budget_category,
+      expense_date,
+      is_recurring,
+      notes,
+      payment_mode,
+      tags
+    } = req.body;
 
-
-    try{
-        let findExpense = await Expense.findById(id);
-
-        console.log('findExpense----',findExpense)
-        
-        if(!findExpense){
-            return res.status(201).json({
-            status: true,
-            message:'Expense data not found',
-            data:null
-        })
-        }
-
-        findExpense.expense_category = expense_category,
-        findExpense.expense_amount = expense_amount,
-        findExpense.budget_category = budget_category,
-        findExpense.expense_date = expense_date,
-        findExpense.is_recurring = is_recurring,
-        findExpense.notes = notes,
-        findExpense.payment_mode = payment_mode,
-        findExpense.tags = tags,
-        findExpense.updatedBy = user_id
-
-        await findExpense.save();
-
-         return res.status(201).json({
-            status: true,
-            message:'Expense data updated successfully',
-            data:findExpense
-        })
-
+    const findExpense = await Expense.findById(id);
+    if (!findExpense) {
+      return res.status(404).json({
+        status: false,
+        message: "Expense data not found",
+        data: null
+      });
     }
-        catch(error){
-       return res.status(500).json({
-            success:false,
-            message:`error update expense ${error.message}`,
-            data:null
-        })
+
+    /* =========================
+       1. STORE OLD VALUE
+    ========================== */
+    const oldExpenseAmount = Number(findExpense.expense_amount);
+
+    /* =========================
+       2. CALCULATE NEW VALUE
+    ========================== */
+    const newExpenseAmount =
+      expense_amount !== undefined
+        ? Number(expense_amount)
+        : oldExpenseAmount;
+
+    /* =========================
+       3. UPDATE BALANCE USING DIFFERENCE
+    ========================== */
+    const expenseDiff = newExpenseAmount - oldExpenseAmount;
+
+    if (expenseDiff !== 0) {
+      await BalanceModel.findOneAndUpdate(
+        { createdBy: user_id },
+        {
+          $inc: {
+            totalExpense: expenseDiff,
+            balanceAmount: -expenseDiff
+          },
+          $set: { updatedBy: user_id }
+        },
+        { new: true }
+      );
     }
-}
+
+    /* =========================
+       4. UPDATE EXPENSE FIELDS
+    ========================== */
+    if (expense_category !== undefined)
+      findExpense.expense_category = expense_category;
+    if (expense_amount !== undefined)
+      findExpense.expense_amount = newExpenseAmount;
+    if (budget_category !== undefined)
+      findExpense.budget_category = budget_category;
+    if (expense_date !== undefined)
+      findExpense.expense_date = expense_date;
+    if (is_recurring !== undefined)
+      findExpense.is_recurring = is_recurring;
+    if (notes !== undefined)
+      findExpense.notes = notes;
+    if (payment_mode !== undefined)
+      findExpense.payment_mode = payment_mode;
+    if (tags !== undefined)
+      findExpense.tags = tags;
+
+    findExpense.updatedBy = user_id;
+
+    await findExpense.save();
+
+    return res.status(200).json({
+      status: true,
+      message: "Expense updated successfully",
+      data: findExpense
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: `Error updating expense: ${error.message}`,
+      data: null
+    });
+  }
+};
+
 
 export const deleteExpense = async (req,res) => {
     const { id} = req.params;
@@ -186,10 +246,12 @@ export const filterExpense = async (req, res) => {
       };
     }
 
+
     // 4. Expense DATE FILTER
     if (expense_date) {
       query.expense_date = new Date(expense_date);
     }
+
 
 
     // 6. TOTAL COUNT
@@ -214,6 +276,26 @@ export const filterExpense = async (req, res) => {
     const totalExpenseAmount =
       aggregateResult.length > 0 ? aggregateResult[0].totalExpenseAmount : 0;
 
+    //tdy's expense calculation
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const todayExpenseAggregate = await Expense.aggregate([
+      {
+        $match: {
+          ...aggregateQuery,
+          createdAt: { $gte: startOfToday, $lt: endOfToday }
+        }
+      },
+      { $group: {
+          _id: null,
+          todayExpenseAmount: { $sum: "$expense_amount" },
+        }
+      }
+    ]);
+    const todayExpenseAmount =
+      todayExpenseAggregate.length > 0 ? todayExpenseAggregate[0].todayExpenseAmount : 0;
+
     // 8. PAGINATION
     const totalPages = Math.ceil(total_count / limit);
 
@@ -236,6 +318,7 @@ export const filterExpense = async (req, res) => {
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
         totalExpenseAmount,
+        todayExpenseAmount
       }
     });
 
