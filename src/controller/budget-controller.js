@@ -96,10 +96,10 @@ export const updateBudget = async(req,res) => {
     }
 }
 export const deleteBudget = async(req,res) => {
-    const { budgetId } = req.params;
+    const { id } = req.params;
     const { user_id } = req.user?.id;
     try {
-        const deletedBudget = await Budget.findOneAndDelete({ _id: budgetId, created_by: user_id });
+        const deletedBudget = await Budget.findOneAndDelete({ _id: id});
         if (!deletedBudget) {
             return res.status(404).json({
                 success: false,
