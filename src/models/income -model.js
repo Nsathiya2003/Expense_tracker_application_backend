@@ -38,6 +38,10 @@ const IncomeSchema = new Schema({
     status:{
         type:String,
         default:'active'
+    },
+    current_income_amount:{
+        type:Number,
+        required:[true,'current income is required..']
     }
 })
 
