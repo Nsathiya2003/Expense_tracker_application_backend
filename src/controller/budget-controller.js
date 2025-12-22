@@ -3,22 +3,51 @@ import { Budget } from "../models/budget-model.js";
 
 export const createBudget = async(req,res) => {
     const  user_id = req.user?.id;
-    console.log('userId is--',user_id)
-    const {budget_category,budget_amount,notes,budget_month,budget_start_date,need_notification,budget_exceeded,budget_Reaches,reach_percentage } = req.body;
+    const {budget_category,budget_amount,notes,budget_start_date,need_notification,
+      budget_exceeded,budget_Reaches,reach_percentage } = req.body;
 
     try{
-        const createBudget =  await Budget.create({
+        //If the category is existing
+        let existingBudget = await Budget.findOne({ budget_category: budget_category, createdBy: user_id });
+        if(existingBudget){
+
+          let BudgetAmount = existingBudget.budget_amount + (+budget_amount);
+
+             existingBudget.createdBy = user_id,
+             existingBudget.budget_amount= BudgetAmount,
+             existingBudget.notes =notes,
+            //  existingBudget.budget_month =budget_month,
+             existingBudget.budget_start_date = budget_start_date,
+             existingBudget.need_notification= need_notification,
+             existingBudget.budget_exceeded= budget_exceeded,
+             existingBudget.budget_reaches=budget_Reaches,
+             existingBudget.reach_percentage =+reach_percentage,
+             existingBudget.updatedBy = user_id
+
+             await existingBudget.save();
+             return res.status(200).json({
+                success: true,
+                message: "Budget updated successfully",
+                data: existingBudget
+            });
+        }
+        else{
+            existingBudget = new Budget({
             createdBy: user_id,
             budget_category: budget_category,    
             budget_amount: + budget_amount,
             notes :notes,
-            budget_month :budget_month,
+            // budget_month :budget_month,
             budget_start_date : budget_start_date,
             need_notification: need_notification,
             budget_exceeded: budget_exceeded,
             budget_reaches:budget_Reaches,
             reach_percentage :+reach_percentage
-        });
+
+            });
+        }
+
+        const createBudget = await existingBudget.save();
         res.status(201).json({
             success: true,
             message: "Budget created successfully",
@@ -57,7 +86,7 @@ export const getBudgets = async(req,res) => {
 export const updateBudget = async(req,res) => {
     const { id } = req.params;
     const { user_id } = req.user?.id;
-    const { budget_category, budget_amount, notes, budget_month, budget_start_date, need_notification, budget_exceeded, budget_reaches, reach_percentage } = req.body;
+    const { budget_category, budget_amount, notes, budget_start_date, need_notification, budget_exceeded, budget_reaches, reach_percentage } = req.body;
     try {
         const updatedBudget = await Budget.findOneAndUpdate(
             { _id: id},
@@ -65,7 +94,7 @@ export const updateBudget = async(req,res) => {
                 budget_category,
                 budget_amount,
                 notes,
-                budget_month,
+                // budget_month,
                 budget_start_date,
                 need_notification,
                 budget_exceeded,
