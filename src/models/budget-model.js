@@ -13,7 +13,7 @@ export const BudgetSchema = new Schema({
     },
     budget_month:{
         type: String,
-        required:[true]
+        required:[false]
     },
     budget_start_date:{
         type: Date,
