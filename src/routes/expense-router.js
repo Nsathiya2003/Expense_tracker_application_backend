@@ -1,6 +1,6 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/authorization-middleware.js';
-import { createExpense, deleteExpense, filterExpense, findAllExpense, getExpenseById, updateExpense } from '../controller/expense-controller.js';
+import { checkBudgetLimit, createExpense, deleteExpense, filterExpense, findAllExpense, getExpenseById, updateExpense } from '../controller/expense-controller.js';
 
 const expenseRouter = express.Router();
 
@@ -15,6 +15,8 @@ expenseRouter.put('/update/:id',isAuthenticated,updateExpense);
 expenseRouter.delete('/delete/:id',isAuthenticated,deleteExpense);
 
 expenseRouter.post('/filter',isAuthenticated,filterExpense);
+
+expenseRouter.post('/checkBudgetLimit',isAuthenticated,checkBudgetLimit)
 
 
 

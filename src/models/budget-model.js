@@ -1,4 +1,4 @@
-import { mongoose, Schema } from "mongoose";
+import  mongoose,{ Schema } from "mongoose";
 import { baseSchema } from "./base-model.js";
 
 export const BudgetSchema = new Schema({

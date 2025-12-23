@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Expense } from "../models/expense-model.js";
 import { BalanceModel } from "../models/balance-model.js";
+import { Budget } from "../models/budget-model.js";
 
 export const createExpense = async( req,res) => {
 
@@ -330,4 +331,101 @@ export const filterExpense = async (req, res) => {
     });
   }
 };
+
+
+export const checkBudgetLimit = async (req, res) => {
+  try {
+    const { category } = req.body;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const today = new Date();
+
+    /* ------------------ 1. Find Budget ------------------ */
+    const budget = await Budget.findOne({
+      budget_category: category,
+      createdBy: userId
+    });
+
+    if (!budget) {
+      return res.status(200).json({ alert: false });
+    }
+
+    const {
+      budget_amount,
+      budget_reaches,
+      reach_percentage = 0,
+      budget_start_date
+    } = budget;
+
+    /* ------------------ 2. Budget Start Date Check ------------------ */
+    if (today < new Date(budget_start_date)) {
+      // Budget not active yet
+      return res.status(200).json({ alert: false });
+    }
+
+    /* ------------------ 3. Match Expenses ------------------ */
+    const matchCondition = {
+      createdBy: userId,
+      expense_category: category,
+      createdAt: { $gte: budget_start_date }
+    };
+
+    /* ------------------ 4. Calculate Total Expense ------------------ */
+    const expenseAgg = await Expense.aggregate([
+      { $match: matchCondition },
+      {
+        $group: {
+          _id: null,
+          totalExpense: {
+            $sum: {
+              $cond: [
+                { $isNumber: "$expense_amount" },
+                "$expense_amount",
+                { $toDouble: "$expense_amount" }
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    const totalExpense = expenseAgg[0]?.totalExpense || 0;
+
+    /* ------------------ 5. Percentage Notification ------------------ */
+    if (budget_reaches === true && reach_percentage > 0) {
+      const usedPercentage = (totalExpense / budget_amount) * 100;
+
+      if (usedPercentage >= reach_percentage) {
+        return res.status(200).json({
+          alert: true,
+          type: "percentage",
+          usedPercentage: Math.round(usedPercentage),
+          message: `⚠️ Warning: You have used ${Math.round(
+            usedPercentage
+          )}% of your ${category} budget.`
+        });
+      }
+    }
+
+    /* ------------------ 6. Exceeded Notification ------------------ */
+    if (budget_reaches === false && totalExpense > budget_amount) {
+      return res.status(200).json({
+        alert: true,
+        type: "exceeded",
+        exceededAmount: totalExpense - budget_amount,
+        message: `🚨 Budget exceeded! You have exceeded your ${category} budget.`
+      });
+    }
+
+    /* ------------------ 7. No Alert ------------------ */
+    return res.status(200).json({ alert: false });
+
+  } catch (error) {
+    console.error("checkBudgetLimit error:", error);
+    return res.status(500).json({
+      alert: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 
