@@ -9,6 +9,7 @@ import { goalRouter } from "./routes/goal-router.js";
 import { expenseRouter } from "./routes/expense-router.js";
 import budgetRouter from "./routes/budget-router.js";
 import { dashboardRouter } from "./routes/dashboard-router.js";
+import notificationRouter from "./routes/notification-routes.js";
 
 dotenv.config();
 ConnectDB();
@@ -40,6 +41,7 @@ app.use("/api/goal",goalRouter);
 app.use("/api/expense",expenseRouter);
 app.use("/api/budget",budgetRouter);
 app.use("/api/dashboard",dashboardRouter);
+app.use("/api/notification",notificationRouter)
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend running" });

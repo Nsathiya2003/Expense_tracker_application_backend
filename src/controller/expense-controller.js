@@ -4,6 +4,7 @@ import { BalanceModel } from "../models/balance-model.js";
 import { Budget } from "../models/budget-model.js";
 import notificationModel from "../models/notification-model.js";
 
+
 export const createExpense = async (req, res) => {
   try {
     const {
@@ -45,14 +46,92 @@ export const createExpense = async (req, res) => {
     }
 
     if (findBalance.balanceAmount < Number(expense_amount)) {
-     return res.status(400).json({
-      success: false,
-      message: "You don't have enough balance to add this expense",
-    });
-
+      return res.status(400).json({
+        success: false,
+        message: "You don't have enough balance to add this expense",
+      });
     }
 
-    /* ---------- 3. Create Expense ---------- */
+   /* ---------- 3. Budget Notification BEFORE Expense Creation ---------- */
+const budget = await Budget.findOne({
+  budget_category: expense_category,
+  createdBy: user_id,
+});
+
+console.log("Budget found:", budget);
+
+if (budget) {
+  const {
+    budget_amount,
+    budget_reaches,
+    reach_percentage = 0,
+    budget_exceeded,
+    budget_start_date,
+  } = budget;
+
+  const expenseAgg = await Expense.aggregate([
+    {
+      $match: {
+        createdBy: new mongoose.Types.ObjectId(user_id),
+        expense_category,
+        createdAt: { $gte: budget_start_date },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalExpense: { $sum: "$expense_amount" },
+      },
+    },
+  ]);
+
+  const totalExpense = expenseAgg[0]?.totalExpense || 0;
+  const projectedTotal = totalExpense + Number(expense_amount);
+
+  console.log("totalExpense:", totalExpense);
+  console.log("projectedTotal:", projectedTotal);
+
+  // 🔔 Percentage notification
+  if (budget_reaches && reach_percentage > 0) {
+    console.log("Budget reaches is enabled");
+    const usedPercentage = (projectedTotal / budget_amount) * 100;
+    console.log("Used Percentage:", usedPercentage);
+
+    if (usedPercentage >= reach_percentage) {
+      console.log("Creating percentage notification...");
+      await createNotificationIfNotExists({
+        userId: user_id,
+        type: "budget_percentage",
+        category: expense_category,
+        title: "Budget Alert",
+        message: `You have used ${Math.round(
+          usedPercentage
+        )}% of your ${expense_category} budget.`,
+        fullMessage: `Your ${expense_category} budget is ₹${budget_amount}. After adding this expense, your total spending will be ₹${projectedTotal}.`,
+      });
+    }
+  }
+
+  // 🔔 Exceeded notification
+  if (budget_exceeded && projectedTotal > budget_amount) {
+    console.log("Budget exceeded is enabled");
+    const exceededBy = projectedTotal - budget_amount;
+    console.log("Exceeded by:", exceededBy);
+
+    console.log("Creating exceeded notification...");
+    await createNotificationIfNotExists({
+      userId: user_id,
+      type: "budget_exceeded",
+      category: expense_category,
+      title: "Budget Exceeded",
+      message: `This expense will exceed your ${expense_category} budget.`,
+      fullMessage: `Your budget is ₹${budget_amount}. This expense exceeds the limit by ₹${exceededBy}.`,
+    });
+  }
+}
+
+
+    /* ---------- 4. Create Expense ---------- */
     const data = await Expense.create({
       expense_category,
       expense_amount: Number(expense_amount),
@@ -65,20 +144,19 @@ export const createExpense = async (req, res) => {
       createdBy: user_id,
     });
 
-    /* ---------- 4. Update Balance ---------- */
+    /* ---------- 5. Update Balance ---------- */
     findBalance.totalExpense += Number(expense_amount);
     findBalance.balanceAmount =
       findBalance.totalIncome - findBalance.totalExpense;
 
     await findBalance.save();
 
-    /* ---------- 5. Success ---------- */
+    /* ---------- 6. Success ---------- */
     return res.status(201).json({
       success: true,
       message: "Expense created successfully",
       data,
     });
-
   } catch (error) {
     console.error("Create Expense Error:", error);
 
@@ -88,7 +166,6 @@ export const createExpense = async (req, res) => {
     });
   }
 };
-
 
 export const findAllExpense = async(req,res) => {
     const user_id = req.user.id;
@@ -393,7 +470,8 @@ export const checkBudgetLimit = async (req, res) => {
       budget_amount,
       budget_reaches,
       reach_percentage = 0,
-      budget_start_date
+      budget_start_date,
+      budget_exceeded
     } = budget;
 
     /* -------- 2. Start Date Check -------- */
@@ -432,6 +510,10 @@ export const checkBudgetLimit = async (req, res) => {
     const incomingAmount = Number(expense_amount) || 0;
     const projectedTotal = totalExpense + incomingAmount;
 
+    console.log('projectedTotal,budget_amount',projectedTotal,budget_amount);
+    console.log('budget_reaches,reach_percentage',budget_reaches,reach_percentage);
+    console.log('budgetAmount',budget_amount);
+
     /* -------- 5. Percentage Alert -------- */
 if (budget_reaches && reach_percentage > 0) {
   const usedPercentage = (projectedTotal / budget_amount) * 100;
@@ -442,14 +524,14 @@ if (budget_reaches && reach_percentage > 0) {
     const message = `You have used ${rounded}% of your ${category} budget.`;
     const details = `Your ${category} budget is ₹${budget_amount}. After adding this expense, your total spending will be ₹${projectedTotal}.`;
 
-    await createNotificationIfNotExists({
-      userId,
-      type: "budget_percentage",
-      category,
-      title: "Budget Alert",
-      message,
-      fullMessage: details
-    });
+    // await createNotificationIfNotExists({
+    //   userId,
+    //   type: "budget_percentage",
+    //   category,
+    //   title: "Budget Alert",
+    //   message,
+    //   fullMessage: details
+    // });
 
     return res.status(200).json({
       alert: true,
@@ -463,20 +545,20 @@ if (budget_reaches && reach_percentage > 0) {
 
 
     /* -------- 6. Exceeded Alert -------- */
-if (!budget_reaches && projectedTotal > budget_amount) {
+if (budget_exceeded && projectedTotal > budget_amount) {
   const exceededBy = projectedTotal - budget_amount;
 
   const message = `This expense will exceed your ${category} budget.`;
   const details = `Your budget is ₹${budget_amount}. This expense exceeds the limit by ₹${exceededBy}.`;
 
-  await createNotificationIfNotExists({
-    userId,
-    type: "budget_exceeded",
-    category,
-    title: "Budget Exceeded",
-    message,
-    fullMessage: details
-  });
+  // await createNotificationIfNotExists({
+  //   userId,
+  //   type: "budget_exceeded",
+  //   category,
+  //   title: "Budget Exceeded",
+  //   message,
+  //   fullMessage: details
+  // });
 
   return res.status(200).json({
     alert: true,
@@ -501,7 +583,6 @@ if (!budget_reaches && projectedTotal > budget_amount) {
 };
 
 
-
 const createNotificationIfNotExists = async ({
   userId,
   type,
@@ -510,23 +591,33 @@ const createNotificationIfNotExists = async ({
   fullMessage,
   category
 }) => {
-  const exists = await notificationModel.findOne({
-    userId,
-    type,
-    category
-  });
+  try {
+    // Optional: check if a similar notification exists
+    // const exists = await notificationModel.findOne({
+    //   userId,
+    //   type,
+    //   category,
+    // });
 
-  if (exists) return;
+    // if (exists) return;
 
-  await notificationModel.create({
-    userId,
-    type,
-    title,
-    message,
-    fullMessage,
-    category
-  });
+    const notif = await notificationModel.create({
+      userId,
+      type,
+      title,
+      message,
+      fullMessage,
+      category,
+    });
+
+    console.log("Notification created:", notif._id);
+    return notif;
+  } catch (err) {
+    console.error("Notification creation failed:", err);
+  }
 };
+
+
 
 
 

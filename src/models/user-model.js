@@ -55,7 +55,16 @@ const UserSchema = new mongoose.Schema({
     address:{
         type:String,
         required:false
-    }
+    },
+    fcmTokens: { 
+    type: [String], // multiple devices support
+    default: [],
+  },
+
+  budgetAlertSent: {
+    type: Boolean,
+    default: false,
+  },
 
 })
 
