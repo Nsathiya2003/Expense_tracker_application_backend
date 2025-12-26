@@ -3,13 +3,7 @@ import notificationModel from "../models/notification-model.js";
 
 export const filterNotifications = async (req, res) => {
   try {
-    let {
-      page = 1,
-      limit = 10,
-      fromDate,
-      toDate,
-      read
-    } = req.body;
+    let { page = 1, limit = 10, fromDate, toDate, read } = req.body;
 
     const user_id = req.user.id;
 
@@ -66,7 +60,6 @@ export const filterNotifications = async (req, res) => {
         hasPrevPage: page > 1,
       },
     });
-
   } catch (error) {
     console.error("filterNotifications error:", error);
     return res.status(500).json({
@@ -76,11 +69,10 @@ export const filterNotifications = async (req, res) => {
   }
 };
 
-
 export const markNotificationsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { ids } = req.body; // expects an array of notification IDs
+    const { ids } = req.body;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({
@@ -92,7 +84,7 @@ export const markNotificationsRead = async (req, res) => {
     const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
 
     const result = await notificationModel.updateMany(
-      { _id: { $in: objectIds }, createdBy: userId },
+      { _id: { $in: objectIds } },
       { $set: { read: true } }
     );
 
@@ -108,7 +100,6 @@ export const markNotificationsRead = async (req, res) => {
     });
   }
 };
-
 
 // controllers/notificationController.js
 export const deleteNotifications = async (req, res) => {
@@ -127,7 +118,7 @@ export const deleteNotifications = async (req, res) => {
 
     const result = await notificationModel.deleteMany({
       _id: { $in: objectIds },
-      createdBy: userId,
+      // createdBy: userId,
     });
 
     return res.status(200).json({
@@ -142,5 +133,3 @@ export const deleteNotifications = async (req, res) => {
     });
   }
 };
-
-

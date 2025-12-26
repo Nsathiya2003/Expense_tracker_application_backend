@@ -21,7 +21,7 @@ const FRONTEND_URL = process.env.FRONT_END_URL || "http://localhost:5173";
 
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -34,20 +34,19 @@ app.use(
   express.static(path.join(process.cwd(), "uploads", "users"))
 );
 
-
 app.use("/api/user", userRouter);
 app.use("/api/income", incomeRouter);
-app.use("/api/goal",goalRouter);
-app.use("/api/expense",expenseRouter);
-app.use("/api/budget",budgetRouter);
-app.use("/api/dashboard",dashboardRouter);
-app.use("/api/notification",notificationRouter)
+app.use("/api/goal", goalRouter);
+app.use("/api/expense", expenseRouter);
+app.use("/api/budget", budgetRouter);
+app.use("/api/dashboard", dashboardRouter);
+app.use("/api/notification", notificationRouter);
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend running" });
 });
-const pathIs = path.join(process.cwd(),"uploads","users");
-console.log('pathIds----',pathIs)
+const pathIs = path.join(process.cwd(), "uploads", "users");
+console.log("pathIds----", pathIs);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
