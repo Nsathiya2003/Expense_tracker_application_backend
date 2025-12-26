@@ -100,7 +100,6 @@ export const createIncome = async (req, res) => {
     const incomeAmount = Number(income_amount);
     const goalContribution = Number(goal_contribute_amount || 0);
 
-    // ✅ Validation
     if (goalContribution > incomeAmount) {
       return res.status(400).json({
         status: false,
@@ -109,10 +108,8 @@ export const createIncome = async (req, res) => {
       });
     }
 
-    // ✅ Calculate current income
     const currentIncomeAmount = incomeAmount - goalContribution;
 
-    // ✅ Create Income
     const incomeData = await Income.create({
       income_category,
       income_amount: incomeAmount,
@@ -128,7 +125,6 @@ export const createIncome = async (req, res) => {
       updatedAt: null
     });
 
-    // ✅ Update Balance (incremental)
     await BalanceModel.findOneAndUpdate(
       { createdBy: user_id },
       {
@@ -141,7 +137,6 @@ export const createIncome = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    // ✅ Goal Handling
     if (goal_id && goalContribution > 0) {
       // Create goal history
       await GoalHistory.create({
@@ -154,11 +149,15 @@ export const createIncome = async (req, res) => {
       });
 
       // Update goal allocation
-      await Goal.findByIdAndUpdate(
+      let updateGoalAmt = await Goal.findByIdAndUpdate(
         goal_id,
         { $inc: { allocated_amount: goalContribution } },
         { new: true }
       );
+      if(updateGoalAmt >= updateGoalAmt.target_amount){
+        updateGoalAmt.status = 'completed';
+        await updateGoalAmt.save();
+      }
     }
 
     return res.status(201).json({
@@ -436,14 +435,19 @@ export const updateIncome = async (req, res) => {
         income_id: findIncome._id
       });
 
-      await Goal.findByIdAndUpdate(
+      let updatedAmt = await Goal.findByIdAndUpdate(
         goal_id,
         { $inc: { allocated_amount: newGoalAmount } }
       );
 
-      findIncome.goal_id = goal_id;
+      if(updatedAmt.allocated_amount >= updatedAmt.target_amount){
+        updatedAmt.status = 'completed';
+        await updatedAmt.save();
+      }
     }
 
+      findIncome.goal_id = goal_id;
+  
     /* =========================
        5. UPDATE INCOME FIELDS
     ========================== */
