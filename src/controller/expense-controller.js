@@ -36,7 +36,7 @@ export const createExpense = async (req, res) => {
     }
 
     /* ---------- 2. Check Balance ---------- */
-    const findBalance = await BalanceModel.findOne({ createdBy: user_id });
+    const findBalance = await BalanceModel.findOne({ createdBy: new mongoose.Types.ObjectId(user_id) });
 
     if (!findBalance) {
       return res.status(404).json({
@@ -91,14 +91,11 @@ if (budget) {
   console.log("totalExpense:", totalExpense);
   console.log("projectedTotal:", projectedTotal);
 
-  // 🔔 Percentage notification
+  /* ---------- Percentage Notification ---------- */
   if (budget_reaches && reach_percentage > 0) {
-    console.log("Budget reaches is enabled");
     const usedPercentage = (projectedTotal / budget_amount) * 100;
-    console.log("Used Percentage:", usedPercentage);
 
     if (usedPercentage >= reach_percentage) {
-      console.log("Creating percentage notification...");
       await createNotificationIfNotExists({
         userId: user_id,
         type: "budget_percentage",
@@ -112,13 +109,10 @@ if (budget) {
     }
   }
 
-  // 🔔 Exceeded notification
+  /* ---------- Exceeded Notification ---------- */
   if (budget_exceeded && projectedTotal > budget_amount) {
-    console.log("Budget exceeded is enabled");
     const exceededBy = projectedTotal - budget_amount;
-    console.log("Exceeded by:", exceededBy);
 
-    console.log("Creating exceeded notification...");
     await createNotificationIfNotExists({
       userId: user_id,
       type: "budget_exceeded",
@@ -128,8 +122,20 @@ if (budget) {
       fullMessage: `Your budget is ₹${budget_amount}. This expense exceeds the limit by ₹${exceededBy}.`,
     });
   }
-}
 
+    /* ---------- Increment Exceeded Count (ONLY FIRST CROSS) ---------- */
+    const wasAlreadyExceeded = totalExpense > budget_amount;
+    const isNowExceeded = projectedTotal > budget_amount;
+
+    if (!wasAlreadyExceeded && isNowExceeded) {
+      console.log("Incrementing budget_exceeded_counts");
+
+      await Budget.updateOne(
+        { _id: budget._id },
+        { $inc: { budget_exceeded_counts: 1 } }
+      );
+    }
+  }
 
     /* ---------- 4. Create Expense ---------- */
     const data = await Expense.create({
