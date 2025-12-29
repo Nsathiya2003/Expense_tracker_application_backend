@@ -183,6 +183,16 @@ export const forgotOtp = async (req,res) => {
     const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "5", 10);
 
     try{
+
+        let userEmailId = await User.findOne({emailId: emailId});
+        if(!userEmailId){
+              return res.status(404).json({
+            status:true,
+            message:'emailId is not found,Please Enter registered emailId',
+            data:[]
+        });
+        }
+
         //generate otp...
         const otp = generateOtp();
         console.log('otp is---',otp);
