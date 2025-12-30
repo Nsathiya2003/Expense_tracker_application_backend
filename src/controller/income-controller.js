@@ -5,83 +5,6 @@ import mongoose from "mongoose";
 import { BalanceModel } from "../models/balance-model.js";
 import { Expense } from "../models/expense-model.js";
 
-// export const createIncome = async(req,res) => {
-//     const { income_category,income_amount,income_date,notes,payment_receive_mode,saving_contribution,goal_id,goal_contribute_amount} = req.body;
-//     const date = new Date();
-//     const user_id = req.user.id;
-
-//     try{
-
-//         if(goal_contribute_amount > income_amount){
-//             return res.status(404).json({
-//                 status:false,
-//                 message:'Your goal spend amount is greater than income amount',
-//                 data: null
-//             })
-//         }
-
-//         let after_saving_amount = income_amount - goal_contribute_amount;
-
-//         let goalId;
-//         if(goal_id){
-//             goalId = goal_id;
-//         }
-
-//         const data = await Income.create({
-//             income_category:income_category,
-//             income_amount:income_amount,
-//             notes:notes,
-//             payment_receive_mode:payment_receive_mode,
-//             income_date:income_date,
-//             saving_contribution:saving_contribution,
-//             goal_id:goalId,
-//             goal_contribute_amount:goal_contribute_amount ? goal_contribute_amount : 0,
-//             createdBy: user_id,
-//             updatedBy:null,
-//             updatedAt:null,
-//             current_income_amount: after_saving_amount
-
-//         });
-
-//         //save balance data
-//         const saveBalance = await BalanceModel.findOneAndUpdate({
-//             }, {
-//             $inc: { totalIncome: income_amount, balanceAmount: after_saving_amount }
-//         }, {
-//             new: true,
-//             upsert: true
-//         })
-
-//         //set the goal amount...
-//         let findGoal;
-//         if(goalId){
-//             //create a goal history...
-//              await GoalHistory.create({
-//                 goal_id: goalId,
-//                 income_type: income_category,
-//                 allocated_amount:goal_contribute_amount ? goal_contribute_amount : 0,
-//                 createdBy: user_id,
-//                 updatedBy:null,
-//                 income_id: data._id
-//             });
-//         findGoal = await Goal.findById(goal_id);
-//         findGoal.allocated_amount = findGoal?.allocated_amount + goal_contribute_amount;
-//         await findGoal.save()
-//         }
-//         return res.status(201).json({
-//             status:true,
-//             message:'income data created successfully',
-//             data:data
-//         })
-//     }
-//     catch(err){
-//         return res.status(500).json({
-//             status:false,
-//             message:`Error creating income data${err.message}`,
-//             data:[]
-//         })
-//     }
-// }
 
 export const createIncome = async (req, res) => {
   try {
@@ -128,7 +51,7 @@ export const createIncome = async (req, res) => {
     });
 
     await BalanceModel.findOneAndUpdate(
-      { createdBy: user_id },
+      { createdBy:  new mongoose.Types.ObjectId(user_id) },
       {
         $inc: {
           totalIncome: incomeAmount,
@@ -156,6 +79,7 @@ export const createIncome = async (req, res) => {
         { $inc: { allocated_amount: goalContribution } },
         { new: true }
       );
+
       if (updateGoalAmt >= updateGoalAmt.target_amount) {
         updateGoalAmt.status = "completed";
         await updateGoalAmt.save();
@@ -387,14 +311,23 @@ export const updateIncome = async (req, res) => {
 
     const newCurrentIncome = newIncomeAmount - newGoalAmount;
 
+    console.log('newCurrentIncome Amount----',newCurrentIncome);
+
+
     /* =========================
        3. UPDATE BALANCE USING DIFFERENCE
     ========================== */
     const incomeDiff = newIncomeAmount - oldIncomeAmount;
+
+        console.log('incomeDiff incomeDiff----',incomeDiff);
+
     const balanceDiff = newCurrentIncome - oldCurrentIncome;
 
+            console.log('balanceDiff----',balanceDiff);
+
+
     await BalanceModel.findOneAndUpdate(
-      {},
+      { createdBy : new mongoose.Types.ObjectId(user_id)},
       {
         $inc: {
           totalIncome: incomeDiff,
@@ -481,7 +414,39 @@ export const updateIncome = async (req, res) => {
 
 export const deleteIncome = async (req, res) => {
   const { id } = req.params;
+  const user_id = req.user.id;
+
   console.log("income id---", id);
+  //find it already exits...
+  let exists = await Income.findOne({id: id});
+  if(!exists){
+      return res.status(404).json({
+      status:false,
+      message: `income data already deleted`,
+      data: [],
+      })
+  }
+  //update the balance table...
+    // let reduceTotalIncome =
+
+    let findBalance = await  BalanceModel.findOne({ createdBy : new mongoose.Types.ObjectId(user_id)});
+
+    let reduceTotalIncome = findBalance.totalIncome > 0 ?? findBalance.totalIncome- exists.income_amount;
+    let reduceBalanceIncome = findBalance.balanceAmount > 0 ?? findBalance.balanceAmount - exists.current_income_amount;
+
+
+    // await BalanceModel.findOneAndUpdate(
+    //   { createdBy : new mongoose.Types.ObjectId(user_id)},
+    //   {
+    //     $inc: {
+    //       totalIncome: incomeDiff,
+    //       balanceAmount: balanceDiff,
+    //     },
+    //   },
+    //   { new: true }
+    // );
+
+
   const data = await Income.findByIdAndDelete(id);
   return res.status(201).json({
     status: true,
@@ -614,107 +579,27 @@ export const filterIncome = async (req, res) => {
   }
 };
 
-// export const incomeBalance = async (req, res) => {
-//   try {
-//     const user_id = req.user.id;
-
-//     const balance = await BalanceModel.findOne({
-//       createdBy: new mongoose.Types.ObjectId(user_id),
-//       isDeleted: false,
-//     }).select("totalIncome totalExpense balanceAmount");
-
-//     console.log("ba;veee---", balance);
-
-//     return res.status(200).json({
-//       status: true,
-//       message: "Income balance fetched successfully",
-//       data: balance || {
-//         totalIncome: 0,
-//         totalExpense: 0,
-//         balanceAmount: 0,
-//       },
-//     });
-//   } catch (error) {
-//     return res.status(500).json({
-//       status: false,
-//       message: "Internal server error",
-//       error: error.message,
-//     });
-//   }
-// };
-
 export const incomeBalance = async (req, res) => {
   try {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const user_id = req.user.id;
 
-    /* -------- 1. Total Current Income (after goal contribution) -------- */
-    const incomeAgg = await Income.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          isDeleted: { $ne: true },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalIncome: {
-            $sum: {
-              $cond: [
-                { $isNumber: "$current_income_amount" },
-                "$current_income_amount",
-                { $toDouble: "$current_income_amount" },
-              ],
-            },
-          },
-        },
-      },
-    ]);
+    const balance = await BalanceModel.findOne({
+      createdBy: new mongoose.Types.ObjectId(user_id),
+      isDeleted: false,
+    }).select("totalIncome totalExpense balanceAmount");
 
-    const totalIncome = incomeAgg[0]?.totalIncome || 0;
+    console.log("ba;veee---", balance);
 
-    /* -------- 2. Total Expense -------- */
-    const expenseAgg = await Expense.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          isDeleted: { $ne: true },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalExpense: {
-            $sum: {
-              $cond: [
-                { $isNumber: "$expense_amount" },
-                "$expense_amount",
-                { $toDouble: "$expense_amount" },
-              ],
-            },
-          },
-        },
-      },
-    ]);
-
-    const totalExpense = expenseAgg[0]?.totalExpense || 0;
-
-    /* -------- 3. Final Balance (NO NEGATIVE) -------- */
-    const rawBalance = totalIncome - totalExpense;
-    const balanceAmount = rawBalance > 0 ? rawBalance : 0;
-
-    /* -------- 4. Response -------- */
     return res.status(200).json({
       status: true,
       message: "Income balance fetched successfully",
-      data: {
-        totalIncome,
-        totalExpense,
-        balanceAmount,
+      data: balance || {
+        totalIncome: 0,
+        totalExpense: 0,
+        balanceAmount: 0,
       },
     });
   } catch (error) {
-    console.error("incomeBalance error:", error);
     return res.status(500).json({
       status: false,
       message: "Internal server error",
@@ -722,3 +607,83 @@ export const incomeBalance = async (req, res) => {
     });
   }
 };
+
+// export const incomeBalance = async (req, res) => {
+//   try {
+//     const userId = new mongoose.Types.ObjectId(req.user.id);
+
+//     /* -------- 1. Total Current Income (after goal contribution) -------- */
+//     const incomeAgg = await Income.aggregate([
+//       {
+//         $match: {
+//           createdBy: userId,
+//           isDeleted: { $ne: true },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           totalIncome: {
+//             $sum: {
+//               $cond: [
+//                 { $isNumber: "$current_income_amount" },
+//                 "$current_income_amount",
+//                 { $toDouble: "$current_income_amount" },
+//               ],
+//             },
+//           },
+//         },
+//       },
+//     ]);
+
+//     const totalIncome = incomeAgg[0]?.totalIncome || 0;
+
+//     /* -------- 2. Total Expense -------- */
+//     const expenseAgg = await Expense.aggregate([
+//       {
+//         $match: {
+//           createdBy: userId,
+//           isDeleted: { $ne: true },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           totalExpense: {
+//             $sum: {
+//               $cond: [
+//                 { $isNumber: "$expense_amount" },
+//                 "$expense_amount",
+//                 { $toDouble: "$expense_amount" },
+//               ],
+//             },
+//           },
+//         },
+//       },
+//     ]);
+
+//     const totalExpense = expenseAgg[0]?.totalExpense || 0;
+
+//     /* -------- 3. Final Balance (NO NEGATIVE) -------- */
+//     const rawBalance = totalIncome - totalExpense;
+//     const balanceAmount = rawBalance > 0 ? rawBalance : 0;
+
+//     /* -------- 4. Response -------- */
+//     return res.status(200).json({
+//       status: true,
+//       message: "Income balance fetched successfully",
+//       data: {
+//         totalIncome,
+//         totalExpense,
+//         balanceAmount,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("incomeBalance error:", error);
+//     return res.status(500).json({
+//       status: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
