@@ -63,7 +63,7 @@ export const createIncome = async (req, res) => {
     );
 
     if (goal_id && goalContribution > 0) {
-      // Create goal history
+      // 1. Create goal history
       await GoalHistory.create({
         goal_id,
         income_type: income_category,
@@ -73,32 +73,39 @@ export const createIncome = async (req, res) => {
         income_id: incomeData._id,
       });
 
-      // Update goal allocation
-      let updateGoalAmt = await Goal.findByIdAndUpdate(
+      // 2. Update goal allocation
+      const updateGoalAmt = await Goal.findByIdAndUpdate(
         goal_id,
         { $inc: { allocated_amount: goalContribution } },
         { new: true }
       );
 
-      if (updateGoalAmt >= updateGoalAmt.target_amount) {
+      if (!updateGoalAmt) return;
+
+      // 3. Update goal status correctly
+      if (updateGoalAmt.allocated_amount >= updateGoalAmt.target_amount) {
         updateGoalAmt.status = "completed";
-        await updateGoalAmt.save();
+      } else if (updateGoalAmt.allocated_amount > 0) {
+        updateGoalAmt.status = "In-progress";
       }
+
+      await updateGoalAmt.save();
     }
 
-    return res.status(201).json({
-      status: true,
-      message: "Income created successfully",
-      data: incomeData,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      status: false,
-      message: `Error creating income: ${error.message}`,
-      data: [],
-    });
-  }
-};
+
+        return res.status(201).json({
+          status: true,
+          message: "Income created successfully",
+          data: incomeData,
+        });
+      } catch (error) {
+        return res.status(500).json({
+          status: false,
+          message: `Error creating income: ${error.message}`,
+          data: [],
+        });
+      }
+    };
 
 export const findAll = async (req, res) => {
   const userId = req.user.id;
@@ -337,45 +344,122 @@ export const updateIncome = async (req, res) => {
       { new: true }
     );
 
+    // /* =========================
+    //    4. GOAL HANDLING
+    // ========================== */
+    // const hadGoalBefore = oldGoalAmount > 0;
+    // const hasGoalNow = newGoalAmount > 0;
+
+    // // Goal removed
+    // if (!hasGoalNow && hadGoalBefore) {
+    //   const history = await GoalHistory.findOne({ income_id: id });
+    //   if (history) {
+    //     await Goal.findByIdAndUpdate(history.goal_id, {
+    //       $inc: { allocated_amount: -history.allocated_amount },
+    //     });
+    //     await GoalHistory.findByIdAndDelete(history._id);
+    //   }
+    //   findIncome.goal_id = null;
+    // }
+
+    // // Goal added
+    // if (hasGoalNow && !hadGoalBefore && goal_id) {
+    //   await GoalHistory.create({
+    //     goal_id,
+    //     income_type: findIncome.income_category,
+    //     allocated_amount: newGoalAmount,
+    //     createdBy: user_id,
+    //     income_id: findIncome._id,
+    //   });
+
+    //   let updatedAmt = await Goal.findByIdAndUpdate(goal_id, {
+    //     $inc: { allocated_amount: newGoalAmount },
+    //   });
+
+    //   if (updatedAmt.allocated_amount >= updatedAmt.target_amount) {
+    //     updatedAmt.status = "completed";
+    //     await updatedAmt.save();
+    //   }
+    // }
+
+    // findIncome.goal_id = goal_id;
+
+
     /* =========================
-       4. GOAL HANDLING
-    ========================== */
-    const hadGoalBefore = oldGoalAmount > 0;
-    const hasGoalNow = newGoalAmount > 0;
+   4. GOAL HANDLING (CORRECTED)
+========================== */
+const hadGoalBefore = oldGoalAmount > 0;
+const hasGoalNow = newGoalAmount > 0;
 
-    // Goal removed
-    if (!hasGoalNow && hadGoalBefore) {
-      const history = await GoalHistory.findOne({ income_id: id });
-      if (history) {
-        await Goal.findByIdAndUpdate(history.goal_id, {
-          $inc: { allocated_amount: -history.allocated_amount },
-        });
-        await GoalHistory.findByIdAndDelete(history._id);
-      }
-      findIncome.goal_id = null;
+let goalDoc = null;
+
+/* ---- Goal removed ---- */
+if (!hasGoalNow && hadGoalBefore) {
+  const history = await GoalHistory.findOne({ income_id: id });
+
+  if (history) {
+    goalDoc = await Goal.findByIdAndUpdate(
+      history.goal_id,
+      { $inc: { allocated_amount: -history.allocated_amount } },
+      { new: true }
+    );
+
+    await GoalHistory.findByIdAndDelete(history._id);
+  }
+
+  findIncome.goal_id = null;
+}
+
+/* ---- Goal added ---- */
+if (hasGoalNow && !hadGoalBefore && goal_id) {
+  await GoalHistory.create({
+    goal_id,
+    income_type: findIncome.income_category,
+    allocated_amount: newGoalAmount,
+    createdBy: user_id,
+    income_id: findIncome._id,
+  });
+
+  goalDoc = await Goal.findByIdAndUpdate(
+    goal_id,
+    { $inc: { allocated_amount: newGoalAmount } },
+    { new: true }
+  );
+
+  findIncome.goal_id = goal_id;
+}
+
+/* ---- Goal updated (amount changed) ---- */
+if (hasGoalNow && hadGoalBefore) {
+  const diff = newGoalAmount - oldGoalAmount;
+
+  if (diff !== 0) {
+    const history = await GoalHistory.findOne({ income_id: id });
+
+    if (history) {
+      history.allocated_amount = newGoalAmount;
+      await history.save();
+
+      goalDoc = await Goal.findByIdAndUpdate(
+        history.goal_id,
+        { $inc: { allocated_amount: diff } },
+        { new: true }
+      );
     }
+  }
+}
 
-    // Goal added
-    if (hasGoalNow && !hadGoalBefore && goal_id) {
-      await GoalHistory.create({
-        goal_id,
-        income_type: findIncome.income_category,
-        allocated_amount: newGoalAmount,
-        createdBy: user_id,
-        income_id: findIncome._id,
-      });
+/* ---- Update Goal Status (COMMON LOGIC) ---- */
+if (goalDoc) {
+  if (goalDoc.allocated_amount >= goalDoc.target_amount) {
+    goalDoc.status = "completed";
+  } else if (goalDoc.allocated_amount > 0) {
+    goalDoc.status = "In-progress";
+  }
 
-      let updatedAmt = await Goal.findByIdAndUpdate(goal_id, {
-        $inc: { allocated_amount: newGoalAmount },
-      });
+  await goalDoc.save();
+}
 
-      if (updatedAmt.allocated_amount >= updatedAmt.target_amount) {
-        updatedAmt.status = "completed";
-        await updatedAmt.save();
-      }
-    }
-
-    findIncome.goal_id = goal_id;
 
     /* =========================
        5. UPDATE INCOME FIELDS

@@ -608,30 +608,41 @@ export const filterExpense = async (req, res) => {
 
     //tdy's expense calculation
     const today = new Date();
-    const startOfToday = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-    const endOfToday = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() + 1
-    );
+    // const startOfToday = new Date(
+    //   today.getFullYear(),
+    //   today.getMonth(),
+    //   today.getDate()
+    // );
+    // const endOfToday = new Date(
+    //   today.getFullYear(),
+    //   today.getMonth(),
+    //   today.getDate() + 1
+    // );
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
     const todayExpenseAggregate = await Expense.aggregate([
-      {
-        $match: {
-          ...aggregateQuery,
-          createdAt: { $gte: startOfToday, $lt: endOfToday },
-        },
+  {
+    $match: {
+      ...aggregateQuery,
+      expense_date: {
+        $gte: startOfToday,
+        $lte: endOfToday,
       },
-      {
-        $group: {
-          _id: null,
-          todayExpenseAmount: { $sum: "$expense_amount" },
-        },
-      },
-    ]);
+    },
+  },
+  {
+    $group: {
+      _id: null,
+      todayExpenseAmount: { $sum: "$expense_amount" },
+    },
+  },
+]);
+
     const todayExpenseAmount =
       todayExpenseAggregate.length > 0
         ? todayExpenseAggregate[0].todayExpenseAmount
