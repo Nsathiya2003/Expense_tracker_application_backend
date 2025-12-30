@@ -413,47 +413,47 @@ export const updateIncome = async (req, res) => {
 };
 
 export const deleteIncome = async (req, res) => {
-  const { id } = req.params;
-  const user_id = req.user.id;
+  try {
+    const { id } = req.params;
+    const user_id = req.user.id;
 
-  console.log("income id---", id);
-  //find it already exits...
-  let exists = await Income.findOne({id: id});
-  if(!exists){
+    const income = await Income.findById(id);
+    if (!income) {
       return res.status(404).json({
-      status:false,
-      message: `income data already deleted`,
-      data: [],
-      })
+        status: false,
+        message: "Income already deleted or not found",
+        data: null,
+      });
+    }
+
+    await BalanceModel.findOneAndUpdate(
+      { createdBy: new mongoose.Types.ObjectId(user_id) },
+      {
+        $inc: {
+          totalIncome: -income.income_amount,
+          balanceAmount: -income.current_income_amount,
+        },
+      },
+      { new: true }
+    );
+
+    const deletedIncome = await Income.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      status: true,
+      message: "Income deleted successfully",
+      data: deletedIncome,
+    });
   }
-  //update the balance table...
-    // let reduceTotalIncome =
+   catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: `Error deleting income: ${error.message}`,
+      data: null,
+    })
+  }
+}
 
-    let findBalance = await  BalanceModel.findOne({ createdBy : new mongoose.Types.ObjectId(user_id)});
-
-    let reduceTotalIncome = findBalance.totalIncome > 0 ?? findBalance.totalIncome- exists.income_amount;
-    let reduceBalanceIncome = findBalance.balanceAmount > 0 ?? findBalance.balanceAmount - exists.current_income_amount;
-
-
-    // await BalanceModel.findOneAndUpdate(
-    //   { createdBy : new mongoose.Types.ObjectId(user_id)},
-    //   {
-    //     $inc: {
-    //       totalIncome: incomeDiff,
-    //       balanceAmount: balanceDiff,
-    //     },
-    //   },
-    //   { new: true }
-    // );
-
-
-  const data = await Income.findByIdAndDelete(id);
-  return res.status(201).json({
-    status: true,
-    message: "income deleted successfully",
-    data: data,
-  });
-};
 
 export const filterIncome = async (req, res) => {
   try {
