@@ -4,7 +4,7 @@ import { Budget } from "../models/budget-model.js";
 // export const createBudget = async(req,res) => {
 //     const  user_id = req.user?.id;
 //     const {budget_category,budget_amount,notes,budget_start_date,need_notification,
-//       budget_exceeded,budget_Reaches,reach_percentage } = req.body;
+//       budget_exceeded,budget_reaches,reach_percentage } = req.body;
 
 //     try{
 //         //If the category is existing
@@ -20,7 +20,7 @@ import { Budget } from "../models/budget-model.js";
 //              existingBudget.budget_start_date = budget_start_date,
 //              existingBudget.need_notification= need_notification,
 //              existingBudget.budget_exceeded= budget_exceeded,
-//              existingBudget.budget_reaches=budget_Reaches,
+//              existingBudget.budget_reaches=budget_reaches,
 //              existingBudget.reach_percentage =+reach_percentage,
 //              existingBudget.updatedBy = user_id
 
@@ -41,7 +41,7 @@ import { Budget } from "../models/budget-model.js";
 //             budget_start_date : budget_start_date,
 //             need_notification: need_notification,
 //             budget_exceeded: budget_exceeded,
-//             budget_reaches:budget_Reaches,
+//             budget_reaches:budget_reaches,
 //             reach_percentage :+reach_percentage
 
 //             });
@@ -74,7 +74,7 @@ export const createBudget = async (req, res) => {
     budget_end_date,
     need_notification,
     budget_exceeded,
-    budget_Reaches,
+    budget_reaches,
     reach_percentage,
   } = req.body;
 
@@ -109,7 +109,7 @@ export const createBudget = async (req, res) => {
       );
       existingBudget.need_notification = need_notification;
       existingBudget.budget_exceeded = budget_exceeded;
-      existingBudget.budget_reaches = budget_Reaches;
+      existingBudget.budget_reaches = budget_reaches;
       existingBudget.reach_percentage = +reach_percentage;
       existingBudget.updatedBy = user_id;
 
@@ -132,7 +132,7 @@ export const createBudget = async (req, res) => {
       budget_end_date,
       need_notification,
       budget_exceeded,
-      budget_reaches: budget_Reaches,
+      budget_reaches: budget_reaches,
       reach_percentage: +reach_percentage,
     });
 
@@ -240,7 +240,7 @@ export const updateBudget = async (req, res) => {
 
   try {
     const updatedBudget = await Budget.findOneAndUpdate(
-      { _id: id, createdBy: user_id }, // make sure user owns the budget
+      { _id: id, createdBy: user_id }, 
       {
         budget_category,
         budget_amount: +budget_amount,
