@@ -8,7 +8,20 @@ userRouter.post('/create',createUser)
 
 userRouter.get('/get/:id',findUser) 
 
-userRouter.put('/update/:id',upload.single('user_profile'), updateUser)
+// userRouter.put('/update/:id',upload.single('user_profile'), updateUser)
+
+userRouter.put(
+  "/update/:id",
+  upload.single("user_profile"),
+  (req, res, next) => {
+    console.log("MULTER FILE:", req.file);
+    console.log("MULTER BODY:", req.body);
+    next();
+  },
+  updateUser
+);
+
+
 
 userRouter.post('/login',userLogin)
 

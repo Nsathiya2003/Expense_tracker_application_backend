@@ -6,38 +6,44 @@ const NotificationSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true
+      index: true,
     },
 
     type: {
       type: String,
-      enum: ["budget_percentage", "budget_exceeded", "reminder", "goal"],
-      required: true
+      enum: [
+        "budget_percentage",
+        "budget_exceeded",
+        "reminder",
+        "goal",
+        "goal_completed",
+      ],
+      required: true,
     },
 
     title: {
       type: String,
-      required: true
+      required: true,
     },
 
     message: {
       type: String,
-      required: true
+      required: true,
     },
 
     fullMessage: {
       type: String,
-      required: true
+      required: true,
     },
 
     category: {
-      type: String
+      type: String,
     },
 
     read: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   { timestamps: true } // createdAt, updatedAt
 );
